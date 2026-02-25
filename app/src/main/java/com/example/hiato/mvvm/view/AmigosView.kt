@@ -14,7 +14,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.example.hiato.BottomNavigationBar
 import com.example.hiato.data.HiatoRepository
 import com.example.hiato.mvvm.model.User
 import kotlinx.coroutines.launch
@@ -27,7 +26,6 @@ fun AmigosView(
     var amigos by remember { mutableStateOf<List<User>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
-    var selectedTab by remember { mutableStateOf(1) } // Amigos activo
 
     LaunchedEffect(userId) {
         scope.launch {
@@ -35,6 +33,7 @@ fun AmigosView(
                 val repo = HiatoRepository()
                 val allUsers = repo.getUsers()
                 amigos = allUsers.filter { it.id != userId }
+                println("AmigosView: ${amigos.size} amigos cargados para userId=$userId")
             } catch (e: Exception) {
                 println("Error cargando amigos: ${e.message}")
             } finally {
@@ -80,13 +79,23 @@ fun AmigosView(
                                     ) {
                                         Icon(
                                             Icons.Default.AccountCircle,
-                                            null,
-                                            modifier = Modifier.size(48.dp).padding(end = 12.dp),
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .padding(end = 12.dp),
                                             tint = MaterialTheme.colorScheme.primary
                                         )
                                         Column {
-                                            Text(user.nombre, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                                            Text(user.email, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(
+                                                user.nombre ?: "Sin nombre",  // ✅ Null safety
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                user.email ?: "Sin email",  // ✅ Null safety
+                                                fontSize = 14.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     }
                                 }
@@ -96,7 +105,5 @@ fun AmigosView(
                 }
             }
         }
-
-        BottomNavigationBar(selectedTab, { selectedTab = it }, userId, navController)
     }
 }

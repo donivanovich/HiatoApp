@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,32 +13,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
-import com.example.hiato.BottomNavigationBar
 import com.example.hiato.data.HiatoRepository
 import com.example.hiato.mvvm.model.Grupo
 import kotlinx.coroutines.launch
 
 @Composable
-fun GruposScreen(
-    navController: NavHostController,
-    userId: Int
+fun GruposView(
+    userId: Int,
+    onGrupoClick: (Int) -> Unit
 ) {
-    println("GruposScreen userId = $userId")
+    println("GruposView userId = $userId")
     var grupos by remember { mutableStateOf<List<Grupo>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
-    var selectedTab by remember { mutableStateOf(0) } // Grupos activo
+
+    // ✅ Estados para popup nuevo grupo
+    var showAddGrupoDialog by remember { mutableStateOf(false) }
+    var newGrupoNombre by remember { mutableStateOf("") }
+    var nombreError by remember { mutableStateOf(false) }
 
     LaunchedEffect(userId) {
         scope.launch {
             try {
                 val repo = HiatoRepository()
                 val allGrupos = repo.getGrupos()
-                println("allGrupos = $allGrupos")
-                allGrupos.forEach { println("Grupo: ${it.nombre}, userId=${it.userId}") }
                 grupos = allGrupos.filter { it.userId == userId }
-                println("grupos filtrados = $grupos")
             } catch (e: Exception) {
                 println("Error: ${e.message}")
             } finally {
@@ -46,6 +47,25 @@ fun GruposScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // ✅ FAB + Nuevo Grupo (arriba derecha)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 40.dp, start = 16.dp, end = 16.dp)
+        ) {
+            FloatingActionButton(
+                onClick = { showAddGrupoDialog = true },
+                modifier = Modifier.align(Alignment.TopEnd),
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Nuevo Grupo",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -78,10 +98,9 @@ fun GruposScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            // Navega pasando grupoId y userId
-                                            navController.navigate(
-                                                "gastos/${grupo.id}?userId=$userId"
-                                            )
+                                            grupo.id?.let { grupoId ->
+                                                onGrupoClick(grupoId)
+                                            }
                                         }
                                 ) {
                                     Column(modifier = Modifier.padding(16.dp)) {
@@ -100,14 +119,66 @@ fun GruposScreen(
                 }
             }
         }
+    }
 
-        BottomNavigationBar(
-            selectedTab = selectedTab,
-            onTabSelected = { tabIndex ->
-                selectedTab = tabIndex
+    // ✅ Popup nuevo grupo
+    if (showAddGrupoDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAddGrupoDialog = false
+                newGrupoNombre = ""
+                nombreError = false
             },
-            userId = userId,
-            navController = navController
+            title = { Text("Nuevo Grupo") },
+            text = {
+                OutlinedTextField(
+                    value = newGrupoNombre,
+                    onValueChange = {
+                        newGrupoNombre = it
+                        nombreError = false
+                    },
+                    label = { Text("Nombre del grupo") },
+                    isError = nombreError,
+                    modifier = Modifier.fillMaxWidth(),
+                    supportingText = { if (nombreError) Text("Nombre requerido") }
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        nombreError = newGrupoNombre.isBlank()
+                        if (!nombreError) {
+                            scope.launch {
+                                try {
+                                    val repo = HiatoRepository()
+                                    repo.addGrupo(userId, newGrupoNombre)
+
+                                    // Recarga lista
+                                    val allGrupos = repo.getGrupos()
+                                    grupos = allGrupos.filter { it.userId == userId }
+
+                                    showAddGrupoDialog = false
+                                    newGrupoNombre = ""
+                                } catch (e: Exception) {
+                                    println("Error creando grupo: ${e.message}")
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Crear")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAddGrupoDialog = false
+                        newGrupoNombre = ""
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
         )
     }
 }
