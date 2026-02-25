@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import com.example.hiato.HiatoRepository
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -38,6 +39,7 @@ fun Login(
     var password by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    var isLoading by remember { mutableStateOf(false) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -50,14 +52,15 @@ fun Login(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Login", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            Text("Login Hiato", fontSize = 32.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(32.dp))
 
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                enabled = !isLoading
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -66,25 +69,46 @@ fun Login(
                 onValueChange = { password = it },
                 label = { Text("Contraseña") },
                 visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                enabled = !isLoading
             )
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
-                    if (email == "donnie@gmail.com" && password == "1234") {
-                        navController.navigate("main") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                    } else {
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Credenciales incorrectas")
+                    scope.launch {
+                        isLoading = true
+                        try {
+                            val repo = HiatoRepository()
+                            val allUsers = repo.getUsers()  // GET /users
+
+                            // Busca match email + password
+                            val user = allUsers.find {
+                                it.email == email && it.password == password
+                            }
+
+                            if (user != null) {
+                                navController.navigate("main/${user.id}") {  // ✅ BIEN
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            } else {
+                                snackbarHostState.showSnackbar("Email o contraseña incorrectos")
+                            }
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar("Error conexión: ${e.message}")
+                        } finally {
+                            isLoading = false
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             ) {
-                Text("Entrar")
+                if (isLoading) {
+                    Text("Cargando...")
+                } else {
+                    Text("Entrar")
+                }
             }
         }
     }
