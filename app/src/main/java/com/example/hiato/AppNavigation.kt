@@ -1,14 +1,13 @@
 package com.example.hiato
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.hiato.view.GruposScreen
-import com.example.hiato.view.Login
+import com.example.hiato.mvvm.view.Login
+import com.example.hiato.mvvm.view.MainView  // ← SOLO ESTE IMPORT
 
 @Composable
 fun AppNavigation() {
@@ -21,16 +20,28 @@ fun AppNavigation() {
         composable("login") {
             Login(navController)
         }
+
         composable(
-            "main/{userId}",  // userId ahora es INT
+            "main/{userId}",
+            arguments = listOf(navArgument("userId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getInt("userId") ?: 1
+            MainView(navController, userId)
+        }
+
+        // ✅ NUEVA RUTA para GastosView
+        composable(
+            "gastos/{grupoId}",
             arguments = listOf(
+                navArgument("grupoId") { type = NavType.IntType },
                 navArgument("userId") {
-                    type = NavType.IntType  // ✅ Cambiado de StringType
+                    type = NavType.IntType
+                    defaultValue = 1
                 }
             )
         ) { backStackEntry ->
-            val userId = backStackEntry.arguments?.getInt("userId") ?: 1  // ✅ getInt()
-            GruposScreen(navController, userId)  // Pasa Int directamente
+            val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
+            val userId = backStackEntry.arguments?.getInt("userId") ?: 1
         }
     }
 }

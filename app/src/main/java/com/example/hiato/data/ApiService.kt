@@ -1,9 +1,9 @@
-package com.example.hiato
+package com.example.hiato.data
 
-import com.example.hiato.model.Gasto
-import com.example.hiato.model.GastoUser
-import com.example.hiato.model.Grupo
-import com.example.hiato.model.User
+import com.example.hiato.mvvm.model.Gasto
+import com.example.hiato.mvvm.model.GastoUser
+import com.example.hiato.mvvm.model.Grupo
+import com.example.hiato.mvvm.model.User
 import retrofit2.http.GET
 
 interface HiatoApi {

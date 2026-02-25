@@ -1,4 +1,4 @@
-package com.example.hiato.model
+package com.example.hiato.mvvm.model
 
 data class User(
     val id: Int? = null,

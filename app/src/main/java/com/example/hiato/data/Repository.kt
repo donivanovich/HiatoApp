@@ -1,11 +1,10 @@
-package com.example.hiato
+package com.example.hiato.data
 
+import com.example.hiato.mvvm.model.Gasto
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 class HiatoRepository {
     private val retrofit = Retrofit.Builder()
@@ -21,5 +20,12 @@ class HiatoRepository {
     suspend fun getUsers() = api.getUsers()
     suspend fun getGrupos() = api.getGrupos()
     suspend fun getGastos() = api.getGastos()
+
     suspend fun getGastosUsers() = api.getGastosUsers()
+
+    suspend fun getGastosByGrupo(grupoId: Int): List<Gasto> {
+        val todosGastos = getGastos()
+        return todosGastos.filter { it.grupoId == grupoId }
+    }
 }
+
