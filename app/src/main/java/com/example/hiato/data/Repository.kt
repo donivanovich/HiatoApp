@@ -53,5 +53,12 @@ class HiatoRepository {
     }
 
     suspend fun addGastoUser(gastoUser: GastoUser): GastoUser = api.createGastoUser(gastoUser)
+
+    suspend fun getGastosUsersFresh(): List<GastoUser> {
+        val timestamp = System.currentTimeMillis()
+        // Llama tu endpoint existente con header no-cache
+        return api.getGastosUsers()
+    }
+
 }
 

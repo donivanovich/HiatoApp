@@ -13,52 +13,48 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
-import com.example.hiato.data.HiatoRepository
-import com.example.hiato.mvvm.model.User
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hiato.mvvm.viewmodel.AmigosViewModel  // ✅ Import nuevo
 
 @Composable
 fun AmigosView(
-    navController: NavHostController,
-    userId: Int
+    userId: Int,
+    viewModel: AmigosViewModel = viewModel()  // ✅ ViewModel inyectado
 ) {
-    var amigos by remember { mutableStateOf<List<User>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
+    val uiState by viewModel.uiState.collectAsState()  // ✅ Estado reactivo
 
+    // ✅ Carga automática al entrar (o al cambiar userId)
     LaunchedEffect(userId) {
-        scope.launch {
-            try {
-                val repo = HiatoRepository()
-                val allUsers = repo.getUsers()
-                amigos = allUsers.filter { it.id != userId }
-                println("AmigosView: ${amigos.size} amigos cargados para userId=$userId")
-            } catch (e: Exception) {
-                println("Error cargando amigos: ${e.message}")
-            } finally {
-                isLoading = false
-            }
-        }
+        viewModel.loadAmigos(userId)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().weight(1f).padding(16.dp)) {
             Column {
                 Text(
-                    "Amigos (${amigos.size})",
+                    "Amigos (${uiState.amigos.size})",  // ✅ Del ViewModel
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
                 when {
-                    isLoading -> {
+                    uiState.isLoading -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
                     }
-                    amigos.isEmpty() -> {
+                    uiState.error != null -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                uiState.error!!,
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    uiState.amigos.isEmpty() -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
                                 "No tienes amigos aún.\n¡Crea grupos para invitarlos!",
@@ -69,7 +65,7 @@ fun AmigosView(
                     }
                     else -> {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(amigos) { user ->
+                            items(uiState.amigos) { user ->  // ✅ Lista del ViewModel
                                 Card(modifier = Modifier.fillMaxWidth()) {
                                     Row(
                                         modifier = Modifier
@@ -87,12 +83,12 @@ fun AmigosView(
                                         )
                                         Column {
                                             Text(
-                                                user.nombre ?: "Sin nombre",  // ✅ Null safety
+                                                user.nombre ?: "Sin nombre",
                                                 fontSize = 20.sp,
                                                 fontWeight = FontWeight.Bold
                                             )
                                             Text(
-                                                user.email ?: "Sin email",  // ✅ Null safety
+                                                user.email ?: "Sin email",
                                                 fontSize = 14.sp,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )

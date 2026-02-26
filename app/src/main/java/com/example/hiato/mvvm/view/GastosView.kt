@@ -4,7 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -13,74 +12,70 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hiato.data.HiatoRepository
-import com.example.hiato.mvvm.model.Gasto
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hiato.mvvm.viewmodel.GastosViewModel
 
 @Composable
 fun GastosView(
     grupoId: Int,
-    userId: Int,
+    userId: Int,  // Mantenido por compatibilidad
     onBack: () -> Unit,
-    onOpenIntegrantes: (gastoId: Int, grupoId: Int) -> Unit
+    onOpenIntegrantes: (gastoId: Int, grupoId: Int) -> Unit,
+    viewModel: GastosViewModel = viewModel()  // ✅ ViewModel
 ) {
-    println("GastosView grupoId=$grupoId, userId=$userId")
-    var gastos by remember { mutableStateOf<List<Gasto>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
+    println("GastosView grupoId=$grupoId")
+    val uiState by viewModel.uiState.collectAsState()
 
-    // Estados para popup nuevo gasto
+    // ✅ Solo estados UI del dialog
     var showAddGastoDialog by remember { mutableStateOf(false) }
     var newGastoNombre by remember { mutableStateOf("") }
     var newGastoPrecio by remember { mutableStateOf("") }
 
+    // ✅ Carga automática
     LaunchedEffect(grupoId) {
-        scope.launch {
-            try {
-                val repo = HiatoRepository()
-                val allGastos = repo.getGastos()
-                gastos = allGastos.filter { it.grupoId == grupoId }
-                println("Gastos encontrados para grupo $grupoId: ${gastos.size}")
-            } catch (e: Exception) {
-                println("Error cargando gastos: ${e.message}")
-            } finally {
-                isLoading = false
-            }
-        }
+        viewModel.loadGastos(grupoId)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header con DOS botones FAB
+        // Header con FABs
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 40.dp, start = 16.dp, end = 16.dp)
         ) {
-            // ← Botón Volver (izquierda)
+            // ← Volver (siempre habilitado)
             FloatingActionButton(
-                onClick = { onBack() },
+                onClick = onBack,
                 modifier = Modifier.align(Alignment.TopStart),
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Volver"
                 )
             }
 
-            // + Botón Nuevo Gasto (derecha)
+            // + Nuevo Gasto (deshabilitado mientras crea)
             FloatingActionButton(
-                onClick = { showAddGastoDialog = true },
+                onClick = { if (!uiState.isCreating) showAddGastoDialog = true },
                 modifier = Modifier.align(Alignment.TopEnd),
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                containerColor = if (uiState.isCreating) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                }
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Añadir Gasto",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    tint = if (uiState.isCreating) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    }
                 )
             }
         }
@@ -92,19 +87,38 @@ fun GastosView(
                 .padding(horizontal = 16.dp)
         ) {
             Text(
-                "Gastos del Grupo $grupoId (${gastos.size})",
+                "Gastos del Grupo $grupoId (${uiState.gastos.size})",  // ✅ Del VM
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             when {
-                isLoading -> {
+                uiState.isLoading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
-                gastos.isEmpty() -> {
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                uiState.error!!,
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.clearError() }) {
+                                Text("Reintentar")
+                            }
+                        }
+                    }
+                }
+                uiState.gastos.isEmpty() -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("No hay gastos aún", fontSize = 18.sp)
                     }
@@ -114,7 +128,7 @@ fun GastosView(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(gastos) { gasto ->
+                        items(uiState.gastos) { gasto ->  // ✅ Lista del VM
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -143,46 +157,42 @@ fun GastosView(
         }
     }
 
-    // Popup para añadir nuevo gasto
+    // ✅ Dialog simplificado
     if (showAddGastoDialog) {
-        var nombreError by remember { mutableStateOf(false) }
-        var precioError by remember { mutableStateOf(false) }
-
         AlertDialog(
             onDismissRequest = {
                 showAddGastoDialog = false
                 newGastoNombre = ""
                 newGastoPrecio = ""
-                nombreError = false
-                precioError = false
+                viewModel.clearError()
             },
             title = { Text("Nuevo Gasto") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
                         value = newGastoNombre,
-                        onValueChange = {
-                            newGastoNombre = it
-                            nombreError = false
-                        },
+                        onValueChange = { newGastoNombre = it },
                         label = { Text("Nombre del gasto") },
-                        isError = nombreError,
+                        isError = uiState.error?.contains("Nombre") == true,
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isCreating,
                         supportingText = {
-                            if (nombreError) Text("Nombre requerido")
+                            uiState.error?.takeIf { it.contains("Nombre") }?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error)
+                            }
                         }
                     )
                     OutlinedTextField(
                         value = newGastoPrecio,
-                        onValueChange = {
-                            newGastoPrecio = it
-                            precioError = false
-                        },
+                        onValueChange = { newGastoPrecio = it },
                         label = { Text("Precio (€)") },
-                        isError = precioError,
+                        isError = uiState.error?.contains("Precio") == true,
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isCreating,
                         supportingText = {
-                            if (precioError) Text("Precio válido requerido")
+                            uiState.error?.takeIf { it.contains("Precio") }?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error)
+                            }
                         }
                     )
                 }
@@ -191,30 +201,23 @@ fun GastosView(
                 Button(
                     onClick = {
                         val precio = newGastoPrecio.toDoubleOrNull()
-                        nombreError = newGastoNombre.isBlank()
-                        precioError = precio == null || precio <= 0
-
-                        if (!nombreError && !precioError) {
-                            scope.launch {
-                                try {
-                                    val repo = HiatoRepository()
-                                    repo.addGasto(grupoId, newGastoNombre, precio!!)
-
-                                    // Recarga lista
-                                    val allGastos = repo.getGastos()
-                                    gastos = allGastos.filter { it.grupoId == grupoId }
-
-                                    showAddGastoDialog = false
-                                    newGastoNombre = ""
-                                    newGastoPrecio = ""
-                                } catch (e: Exception) {
-                                    println("Error añadiendo gasto: ${e.message}")
-                                }
-                            }
+                        viewModel.createGasto(
+                            grupoId = grupoId,
+                            nombre = newGastoNombre,
+                            precio = precio ?: 0.0
+                        ) {
+                            showAddGastoDialog = false
+                            newGastoNombre = ""
+                            newGastoPrecio = ""
                         }
-                    }
+                    },
+                    enabled = !uiState.isCreating
                 ) {
-                    Text("Añadir")
+                    if (uiState.isCreating) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("Añadir")
+                    }
                 }
             },
             dismissButton = {
@@ -223,6 +226,7 @@ fun GastosView(
                         showAddGastoDialog = false
                         newGastoNombre = ""
                         newGastoPrecio = ""
+                        viewModel.clearError()
                     }
                 ) {
                     Text("Cancelar")

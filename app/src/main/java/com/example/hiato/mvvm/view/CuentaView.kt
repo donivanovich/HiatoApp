@@ -22,7 +22,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun CuentaView(
-    navController: NavHostController,
     userId: Int
 ) {
     var currentUser by remember { mutableStateOf<User?>(null) }

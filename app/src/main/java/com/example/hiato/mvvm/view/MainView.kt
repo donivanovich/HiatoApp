@@ -5,6 +5,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import com.example.hiato.BottomNavigationBar
+import com.example.hiato.data.HiatoRepository
+import com.example.hiato.mvvm.viewmodel.AmigosViewModel
+import com.example.hiato.mvvm.viewmodel.GastosViewModel
+import com.example.hiato.mvvm.viewmodel.GruposViewModel
+import com.example.hiato.mvvm.viewmodel.IntegrantesViewModel
 
 @Composable
 fun MainView(
@@ -15,7 +20,13 @@ fun MainView(
 
     // Estados para sub-navegación por tab
     var grupoSeleccionado by remember { mutableStateOf<Int?>(null) }
-    var gastoSeleccionado by remember { mutableStateOf<Int?>(null) }  // ← NUEVO
+    var gastoSeleccionado by remember { mutableStateOf<Int?>(null) }  // ←
+    val repo = HiatoRepository()
+    val amigosViewModel = remember(repo) { AmigosViewModel(repo) }
+    val gruposViewModel = remember(repo) { GruposViewModel(repo) }
+    val gastosViewModel = remember(repo) { GastosViewModel(repo) }
+    val integrantesViewModel = remember(repo) { IntegrantesViewModel(repo) }
+
 
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
@@ -27,9 +38,8 @@ fun MainView(
                             IntegrantesView(
                                 gastoId = gastoSeleccionado!!,
                                 grupoId = grupoSeleccionado!!,
-                                onBack = {
-                                    gastoSeleccionado = null  // Volver a Gastos
-                                }
+                                viewModel = integrantesViewModel,  // ✅ Reemplaza HiatoViewModel
+                                onBack = { gastoSeleccionado = null }
                             )
                         }
                         grupoSeleccionado != null -> {
@@ -40,8 +50,8 @@ fun MainView(
                                 onBack = { grupoSeleccionado = null },  // Volver a Grupos
                                 onOpenIntegrantes = { gastoId, grupoId ->
                                     gastoSeleccionado = gastoId
-                                    // grupoId ya está guardado
-                                }
+                                },
+                                viewModel = gastosViewModel
                             )
                         }
                         else -> {
@@ -50,13 +60,14 @@ fun MainView(
                                 userId = userId,
                                 onGrupoClick = { grupoId ->
                                     grupoSeleccionado = grupoId
-                                }
+                                },
+                                viewModel = gruposViewModel
                             )
                         }
                     }
                 }
-                1 -> AmigosView(navController, userId)
-                2 -> CuentaView(navController, userId)
+                1 -> AmigosView(userId, amigosViewModel)
+                2 -> CuentaView(userId)
             }
         }
 

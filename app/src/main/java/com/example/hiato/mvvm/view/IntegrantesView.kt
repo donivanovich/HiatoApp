@@ -17,91 +17,61 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hiato.data.HiatoRepository
-import com.example.hiato.mvvm.model.GastoUser
-import com.example.hiato.mvvm.model.User
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hiato.mvvm.viewmodel.IntegrantesViewModel
 
 @Composable
 fun IntegrantesView(
     gastoId: Int,
     grupoId: Int,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: IntegrantesViewModel = viewModel()
 ) {
-    println("IntegrantesView gastoId=$gastoId, grupoId=$grupoId")
+    val uiState by viewModel.uiState.collectAsState()
 
-    var gastoUsers by remember { mutableStateOf<List<GastoUser>>(emptyList()) }
-    var users by remember { mutableStateOf<List<User>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    val scope = rememberCoroutineScope()
-
-    // Dialog para añadir integrante
     var showAddIntegranteDialog by remember { mutableStateOf(false) }
-    var dialogUsers by remember { mutableStateOf<List<User>>(emptyList()) }
     var selectedUserId by remember { mutableStateOf<Int?>(null) }
 
-    LaunchedEffect(gastoId) {
-        scope.launch {
-            try {
-                val repo = HiatoRepository()
-                val TODOS_GastoUsers = repo.getGastosUsers()
-                println("🔍 TODOS gastoUsers: $TODOS_GastoUsers")
-                println("🔍 Filtrando gastoId=$gastoId")
-
-                gastoUsers = TODOS_GastoUsers.filter { it.gastoId == gastoId }
-                println("🔍 DESPUÉS filtro: $gastoUsers")
-
-                users = repo.getUsers()
-            } catch (e: Exception) {
-                error = "Error: ${e.message}"
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
-    // Carga users para dialog
-    LaunchedEffect(showAddIntegranteDialog) {
-        if (showAddIntegranteDialog) {
-            val repo = HiatoRepository()
-            dialogUsers = repo.getUsers()
-        }
+    // ✅ Recarga cuando cambia gastoId O termina isAdding
+    LaunchedEffect(gastoId, uiState.isAdding) {
+        println("🔧 LaunchedEffect: gastoId=$gastoId, isAdding=${uiState.isAdding}")
+        viewModel.loadIntegrantes(gastoId)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header con DOS FABs
+        // Header con FABs
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 40.dp, start = 16.dp, end = 16.dp)
         ) {
-            // ← Volver (izquierda)
             FloatingActionButton(
-                onClick = { onBack() },
+                onClick = onBack,
                 modifier = Modifier.align(Alignment.TopStart),
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
             }
-
-            // + Añadir Integrante (derecha)
             FloatingActionButton(
-                onClick = { showAddIntegranteDialog = true },
+                onClick = { if (!uiState.isAdding) showAddIntegranteDialog = true },
                 modifier = Modifier.align(Alignment.TopEnd),
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                containerColor = if (uiState.isAdding) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                }
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Añadir Integrante",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    Icons.Default.Add,
+                    contentDescription = "Añadir integrante",
+                    tint = if (uiState.isAdding) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    }
                 )
             }
         }
@@ -113,83 +83,85 @@ fun IntegrantesView(
                 .padding(horizontal = 16.dp)
         ) {
             Text(
-                "Integrantes del Gasto #$gastoId (${gastoUsers.size})",
+                text = "Integrantes del Gasto #$gastoId (${uiState.gastoUsers.size})",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             when {
-                isLoading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator()
                     }
                 }
-                error != null -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(error!!, color = MaterialTheme.colorScheme.error)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = {
-                                isLoading = true
-                                error = null
-                            }) {
-                                Text("Reintentar")
-                            }
+                uiState.error != null -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = uiState.error!!,
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { viewModel.clearError() }) {
+                            Text("Reintentar")
                         }
                     }
                 }
-                gastoUsers.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.PersonAdd,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("No hay integrantes asignados", fontSize = 18.sp)
-                            Text("Usa el + para añadir el primero", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                uiState.gastoUsers.isEmpty() -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PersonAdd,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp).clip(CircleShape),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("No hay integrantes asignados", fontSize = 18.sp)
+                        Text(
+                            "Usa el + para añadir",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 else -> {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(gastoUsers) { gastoUser ->
-                            val user = users.find { it.id == gastoUser.userId }
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // ✅ Key correcto en items()
+                        items(
+                            items = uiState.gastoUsers,
+                            key = { gastoUser -> gastoUser.id ?: gastoUser.userId }
+                        ) { gastoUser ->
+                            val user = uiState.allUsers.find { it.id == gastoUser.userId }
                             user?.let {
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
-                                            // TODO: Detalles/editar asignación
-                                        },
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color(0xFFF3E5F5) // Púrpura claro exacto de tu imagen
-                                    ),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp) // Sin sombra como foto
+                                        .clickable { /* Detalle futuro */ }
                                 ) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(12.dp), // Padding interno exacto
-                                        verticalAlignment = Alignment.Top
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        // Avatar circular (gris púrpura como Ivan/Donnie)
                                         Box(
                                             modifier = Modifier
                                                 .size(40.dp)
                                                 .clip(CircleShape)
-                                                .background(
-                                                    color = Color(0xFF6200EE), // Morado avatar como foto
-                                                    shape = CircleShape
-                                                ),
+                                                .background(Color(0xFF6200EE), CircleShape),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
@@ -199,23 +171,17 @@ fun IntegrantesView(
                                                 color = Color.White
                                             )
                                         }
-
                                         Spacer(modifier = Modifier.width(12.dp))
-
-                                        // Nombre + Email (vertical, debajo avatar)
-                                        Column {
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = it.nombre ?: it.email ?: "Usuario",
-                                                style = MaterialTheme.typography.bodyLarge.copy(
-                                                    fontWeight = FontWeight.Medium
-                                                ),
-                                                color = Color(0xFF1C1B1F) // Negro suave como foto
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Medium
                                             )
-                                            Spacer(modifier = Modifier.height(2.dp))
                                             Text(
                                                 text = it.email ?: "",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = Color(0xFF666666) // Gris como email foto
+                                                fontSize = 14.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
@@ -228,40 +194,39 @@ fun IntegrantesView(
         }
     }
 
-    // ✅ DIALOGO FUNCIONAL - Crea GastoUser real
+    // Dialog añadir integrante
     if (showAddIntegranteDialog) {
         AlertDialog(
             onDismissRequest = {
                 showAddIntegranteDialog = false
                 selectedUserId = null
+                viewModel.clearError()
             },
             title = { Text("Asignar Integrante") },
             text = {
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxHeight(1F)
                         .fillMaxWidth()
+                        .heightIn(max = 400.dp)
                 ) {
-                    items(dialogUsers) { user ->
-                        if (user.id != null) {
+                    items(uiState.allUsers) { user ->
+                        user.id?.let { id ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
-                                        selectedUserId = user.id
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    .clickable { selectedUserId = id }
+                                    .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
-                                    selected = selectedUserId == user.id,
-                                    onClick = { selectedUserId = user.id }
+                                    selected = selectedUserId == id,
+                                    onClick = { selectedUserId = id }
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(user.nombre ?: user.email ?: "Usuario ${user.id}")
+                                    Text(text = user.nombre ?: user.email ?: "Usuario $id")
                                     Text(
-                                        "ID: ${user.id}",
+                                        text = "ID: $id",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -275,39 +240,30 @@ fun IntegrantesView(
                 Button(
                     onClick = {
                         selectedUserId?.let { userId ->
-                            scope.launch {
-                                try {
-                                    val repo = HiatoRepository()
-                                    val nuevoGastoUser = GastoUser(
-                                        gastoId = gastoId,
-                                        userId = userId
-                                    )
-                                    repo.addGastoUser(nuevoGastoUser)  // ✅ CREA EN BACKEND
-
-                                    println("✅ CREADO: userId=$userId → gastoId=$gastoId")
-
-                                    // Recarga lista
-                                    gastoUsers = repo.getGastosUsers().filter { it.gastoId == gastoId }
-
-                                    showAddIntegranteDialog = false
-                                    selectedUserId = null
-                                } catch (e: Exception) {
-                                    println("❌ Error: ${e.message}")
-                                    error = "Error asignando: ${e.message}"
-                                }
+                            println("🔧 CLICK ASIGNAR: gastoId=$gastoId userId=$userId")
+                            viewModel.addIntegrante(gastoId, userId) {
+                                showAddIntegranteDialog = false
+                                selectedUserId = null
                             }
                         }
                     },
-                    enabled = selectedUserId != null
+                    enabled = selectedUserId != null && !uiState.isAdding
                 ) {
-                    Text("Asignar")
+                    if (uiState.isAdding) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("Asignar")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    showAddIntegranteDialog = false
-                    selectedUserId = null
-                }) {
+                TextButton(
+                    onClick = {
+                        showAddIntegranteDialog = false
+                        selectedUserId = null
+                        viewModel.clearError()
+                    }
+                ) {
                     Text("Cancelar")
                 }
             }

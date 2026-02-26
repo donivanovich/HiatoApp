@@ -1,6 +1,7 @@
 package com.example.hiato.mvvm.view
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,52 +12,50 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hiato.data.HiatoRepository
-import com.example.hiato.mvvm.model.Grupo
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hiato.mvvm.viewmodel.GruposViewModel
 
 @Composable
 fun GruposView(
     userId: Int,
-    onGrupoClick: (Int) -> Unit
+    onGrupoClick: (Int) -> Unit,
+    viewModel: GruposViewModel = viewModel()  // ✅ ViewModel inyectado
 ) {
     println("GruposView userId = $userId")
-    var grupos by remember { mutableStateOf<List<Grupo>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
+    val uiState by viewModel.uiState.collectAsState()  // ✅ Estado reactivo único
 
-    // ✅ Estados para popup nuevo grupo
+    // ✅ Solo estados UI del dialog (mínimos)
     var showAddGrupoDialog by remember { mutableStateOf(false) }
     var newGrupoNombre by remember { mutableStateOf("") }
-    var nombreError by remember { mutableStateOf(false) }
 
+    // ✅ Carga automática al entrar/cambiar userId
     LaunchedEffect(userId) {
-        scope.launch {
-            try {
-                val repo = HiatoRepository()
-                val allGrupos = repo.getGrupos()
-                grupos = allGrupos.filter { it.userId == userId }
-            } catch (e: Exception) {
-                println("Error: ${e.message}")
-            } finally {
-                isLoading = false
-            }
-        }
+        viewModel.loadGrupos(userId)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // ✅ FAB + Nuevo Grupo (arriba derecha)
+        // ✅ FAB Nuevo Grupo
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 40.dp, start = 16.dp, end = 16.dp)
         ) {
+            val interactionSource = remember { MutableInteractionSource() }
             FloatingActionButton(
-                onClick = { showAddGrupoDialog = true },
+                onClick = {
+                    if (!uiState.isCreating) showAddGrupoDialog = true
+                },
                 modifier = Modifier.align(Alignment.TopEnd),
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                interactionSource = if (uiState.isCreating) {
+                    // ✅ Deshabilitado: no responde a clicks ni ripple
+                    remember { MutableInteractionSource() }
+                } else {
+                    interactionSource
+                }
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -74,37 +73,60 @@ fun GruposView(
         ) {
             Column {
                 Text(
-                    "Mis Grupos (${grupos.size})",
+                    "Mis Grupos (${uiState.grupos.size})",  // ✅ Del ViewModel
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
                 when {
-                    isLoading -> {
+                    uiState.isLoading -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
                     }
-                    grupos.isEmpty() -> {
+                    uiState.error != null -> {  // ✅ Manejo de errores del VM
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    uiState.error!!,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(onClick = { viewModel.clearError() }) {
+                                    Text("Reintentar")
+                                }
+                            }
+                        }
+                    }
+                    uiState.grupos.isEmpty() -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text("No tienes grupos aún", fontSize = 18.sp)
                         }
                     }
                     else -> {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(grupos) { grupo ->
+                            items(uiState.grupos) { grupo ->  // ✅ Lista del ViewModel
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            grupo.id?.let { grupoId ->
-                                                onGrupoClick(grupoId)
-                                            }
+                                            grupo.id?.let { onGrupoClick(it) }
                                         }
                                 ) {
                                     Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(grupo.nombre, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            grupo.nombre,
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             "ID Usuario: ${grupo.userId}",
@@ -121,52 +143,49 @@ fun GruposView(
         }
     }
 
-    // ✅ Popup nuevo grupo
+    // ✅ Dialog simplificado - lógica en ViewModel
     if (showAddGrupoDialog) {
         AlertDialog(
             onDismissRequest = {
                 showAddGrupoDialog = false
                 newGrupoNombre = ""
-                nombreError = false
+                viewModel.clearError()
             },
             title = { Text("Nuevo Grupo") },
             text = {
                 OutlinedTextField(
                     value = newGrupoNombre,
-                    onValueChange = {
-                        newGrupoNombre = it
-                        nombreError = false
-                    },
+                    onValueChange = { newGrupoNombre = it },
                     label = { Text("Nombre del grupo") },
-                    isError = nombreError,
+                    isError = uiState.error?.contains("requerido") == true,  // ✅ Error del VM
                     modifier = Modifier.fillMaxWidth(),
-                    supportingText = { if (nombreError) Text("Nombre requerido") }
+                    enabled = !uiState.isCreating,  // ✅ Deshabilitado mientras crea
+                    supportingText = {
+                        uiState.error?.takeIf { it.contains("requerido") }?.let {
+                            Text(it, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        nombreError = newGrupoNombre.isBlank()
-                        if (!nombreError) {
-                            scope.launch {
-                                try {
-                                    val repo = HiatoRepository()
-                                    repo.addGrupo(userId, newGrupoNombre)
-
-                                    // Recarga lista
-                                    val allGrupos = repo.getGrupos()
-                                    grupos = allGrupos.filter { it.userId == userId }
-
-                                    showAddGrupoDialog = false
-                                    newGrupoNombre = ""
-                                } catch (e: Exception) {
-                                    println("Error creando grupo: ${e.message}")
-                                }
-                            }
+                        viewModel.createGrupo(
+                            userId = userId,
+                            nombre = newGrupoNombre
+                        ) {
+                            // ✅ Se cierra automáticamente al éxito (VM recarga lista)
+                            showAddGrupoDialog = false
+                            newGrupoNombre = ""
                         }
-                    }
+                    },
+                    enabled = !uiState.isCreating
                 ) {
-                    Text("Crear")
+                    if (uiState.isCreating) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("Crear")
+                    }
                 }
             },
             dismissButton = {
@@ -174,6 +193,7 @@ fun GruposView(
                     onClick = {
                         showAddGrupoDialog = false
                         newGrupoNombre = ""
+                        viewModel.clearError()
                     }
                 ) {
                     Text("Cancelar")
