@@ -52,12 +52,13 @@ class HiatoRepository {
         return api.createGrupo(grupo)
     }
 
-    suspend fun addGastoUser(gastoUser: GastoUser): GastoUser = api.createGastoUser(gastoUser)
-
-    suspend fun getGastosUsersFresh(): List<GastoUser> {
-        val timestamp = System.currentTimeMillis()
-        // Llama tu endpoint existente con header no-cache
-        return api.getGastosUsers()
+    suspend fun addGastoUser(gastoId: Int, userId: Int): GastoUser {
+        val gastoUser = GastoUser(
+            id = null,
+            gastoId = gastoId,
+            userId = userId
+        )
+        return api.createGastoUser(gastoUser)
     }
 
 }

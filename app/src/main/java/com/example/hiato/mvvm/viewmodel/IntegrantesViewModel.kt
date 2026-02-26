@@ -9,11 +9,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
+
+data class Integrante(
+    val user: User,
+    val gastoUserId: Int? = null
+)
 
 data class IntegrantesUiState(
-    val gastoUsers: List<GastoUser> = emptyList(),
-    val allUsers: List<User> = emptyList(),
+    val integrantes: List<Integrante> = emptyList(),
     val isLoading: Boolean = false,
     val isAdding: Boolean = false,
     val error: String? = null
@@ -28,64 +31,57 @@ class IntegrantesViewModel(
 
     private var currentGastoId: Int? = null
 
-    fun addIntegrante(gastoId: Int, userId: Int, onSuccess: () -> Unit = {}) {
+    fun loadIntegrantes(gastoId: Int) {
+        currentGastoId = gastoId
         viewModelScope.launch {
             try {
-                println("🔧 addIntegrante INICIO: gastoId=$gastoId, userId=$userId")
-                _uiState.value = _uiState.value.copy(isAdding = true, error = null)
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-                val newGastoUser = GastoUser(id = null, gastoId = gastoId, userId = userId)
-                val created = repository.addGastoUser(newGastoUser)
-                println("🔧 API RESPUESTA: $created")
+                // Cargar gastos_users y users para hacer join
+                val gastosUsers = repository.getGastosUsers()
+                val todosUsers = repository.getUsers()
 
-                // ✅ DELAY + FORZAR refresh (MongoDB/Retrofit cache)
-                delay(300)
-
-                println("🔧 RECARGA FORZADA")
-                currentGastoId?.let {
-                    loadIntegrantes(it)
+                // Filtrar los users que participan en este gasto específico
+                val gastosUsersDelGasto = gastosUsers.filter { it.gastoId == gastoId }
+                val integrantes = gastosUsersDelGasto.mapNotNull { gastoUser ->
+                    todosUsers.find { it.id == gastoUser.userId }?.let { user ->
+                        Integrante(user = user, gastoUserId = gastoUser.id)
+                    }
                 }
-                onSuccess()
+
+                _uiState.value = IntegrantesUiState(
+                    integrantes = integrantes,
+                    isLoading = false
+                )
+
+                println("IntegrantesViewModel: ${integrantes.size} integrantes para gastoId=$gastoId")
             } catch (e: Exception) {
-                println("🔧 ERROR: ${e.message}")
-                _uiState.value = _uiState.value.copy(isAdding = false, error = e.message)
-            } finally {
-                _uiState.value = _uiState.value.copy(isAdding = false)
+                _uiState.value = IntegrantesUiState(
+                    isLoading = false,
+                    error = e.message ?: "Error cargando integrantes"
+                )
             }
         }
     }
 
-    suspend fun loadIntegrantes(gastoId: Int) {
-        currentGastoId = gastoId
-        try {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+    fun addIntegrante(gastoId: Int, userId: Int, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(isAdding = true, error = null)
 
-            println("🔧 CARGANDO getGastosUsers...")
-            val allGastoUsers = repository.getGastosUsers()
-            println("🔧 API DEVUELVE ${allGastoUsers.size} gastoUsers total")
+                repository.addGastoUser(gastoId = gastoId, userId = userId)
 
-            val gastoUsers = allGastoUsers.filter { it.gastoId == gastoId }.toList()
-            println("🔧 FILTRADOS ${gastoUsers.size} para gastoId=$gastoId")
-
-            val allUsers = repository.getUsers().toList()
-
-            // ✅ NUEVO estado COMPLETO
-            _uiState.value = IntegrantesUiState(
-                gastoUsers = gastoUsers,
-                allUsers = allUsers,
-                isLoading = false
-            )
-            println("🔧 UI STATE ACTUALIZADO: ${gastoUsers.size} items")
-
-        } catch (e: Exception) {
-            println("🔧 LOAD ERROR: ${e.message}")
-            _uiState.value = IntegrantesUiState(
-                isLoading = false,
-                error = e.message
-            )
+                // Recarga automática
+                loadIntegrantes(gastoId)
+                onSuccess()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isAdding = false,
+                    error = "Error añadiendo integrante: ${e.message}"
+                )
+            }
         }
     }
-
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)

@@ -38,8 +38,8 @@ fun MainView(
                             IntegrantesView(
                                 gastoId = gastoSeleccionado!!,
                                 grupoId = grupoSeleccionado!!,
-                                viewModel = integrantesViewModel,  // ✅ Reemplaza HiatoViewModel
-                                onBack = { gastoSeleccionado = null }
+                                onBack = { gastoSeleccionado = null },
+                                viewModel = integrantesViewModel
                             )
                         }
                         grupoSeleccionado != null -> {

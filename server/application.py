@@ -161,32 +161,62 @@ def create_gasto_user():
     data = request.get_json()
     print("🔍 GASTOS_USERS DATA:", data)
     
-    gasto_id = data.get('gastoId') or data.get('gasto_id')
-    user_id = data.get('userId') or data.get('user_id')
+    # ✅ Solo snake_case
+    gasto_id = data.get('gasto_id')
+    user_id = data.get('user_id')
     
     print("🔍 PARSEADO gasto_id={}, user_id={}".format(gasto_id, user_id))
     
-    # ... validaciones iguales ...
+    # ✅ VALIDACIONES OBLIGATORIAS
+    if not gasto_id or not isinstance(gasto_id, int):
+        return jsonify({'error': 'gasto_id requerido (entero)'}), 400
     
-    # ✅ Nuevo ID
+    if not user_id or not isinstance(user_id, int):
+        return jsonify({'error': 'user_id requerido (entero)'}), 400
+    
+    # ✅ VERIFICAR QUE EL USUARIO EXISTA
+    user_exists = db.users.find_one({'id': user_id})
+    if not user_exists:
+        return jsonify({'error': f'Usuario con ID {user_id} no existe'}), 404
+    
+    # ✅ VERIFICAR QUE EL GASTO EXISTA
+    gasto_exists = db.gastos.find_one({'id': gasto_id})
+    if not gasto_exists:
+        return jsonify({'error': f'Gasto con ID {gasto_id} no existe'}), 404
+    
+    # 🚫 EVITAR DUPLICADOS (snake_case completo)
+    duplicado = db.gastos_users.find_one({
+        'gasto_id': gasto_id,
+        'user_id': user_id
+    })
+    if duplicado:
+        return jsonify({
+            'error': f'Usuario {user_id} ya está asignado a este gasto {gasto_id}'
+        }), 409
+    
+    # ✅ Nuevo ID secuencial
     last_id = db.gastos_users.find_one(sort=[('id', -1)])
     new_id = (last_id['id'] + 1) if last_id else 1
     
+    # ✅ Todo snake_case en DB
     nuevo_gasto_user = {
         'id': new_id,
-        'gastoId': gasto_id,
-        'userId': user_id
+        'gasto_id': gasto_id,
+        'user_id': user_id
     }
     
     db.gastos_users.insert_one(nuevo_gasto_user)
     
-    # ✅ FIX ObjectId
-    response = nuevo_gasto_user.copy()
-    if '_id' in response:
-        del response['_id']  # Elimina ObjectId
+    # ✅ Response snake_case para Android
+    response = {
+        'id': new_id,
+        'gasto_id': gasto_id,
+        'user_id': user_id
+    }
     
-    print("✅ RESPONSE:", response)
+    print("✅ GASTO_USER CREADO:", response)
     return jsonify(response), 201
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
