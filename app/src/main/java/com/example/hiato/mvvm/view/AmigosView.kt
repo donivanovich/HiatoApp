@@ -14,16 +14,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.hiato.mvvm.viewmodel.AmigosViewModel  // ✅ Import nuevo
+import com.example.hiato.mvvm.viewmodel.AmigosViewModel
 
 @Composable
 fun AmigosView(
     userId: Int,
-    viewModel: AmigosViewModel = viewModel()  // ✅ ViewModel inyectado
+    viewModel: AmigosViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()  // ✅ Estado reactivo
+    val uiState by viewModel.uiState.collectAsState()
 
-    // ✅ Carga automática al entrar (o al cambiar userId)
     LaunchedEffect(userId) {
         viewModel.loadAmigos(userId)
     }
@@ -32,10 +31,10 @@ fun AmigosView(
         Box(modifier = Modifier.fillMaxSize().weight(1f).padding(16.dp)) {
             Column {
                 Text(
-                    "Amigos (${uiState.amigos.size})",  // ✅ Del ViewModel
+                    "Amigos (${uiState.amigos.size})",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 16.dp, top = 16.dp)
                 )
 
                 when {
@@ -65,7 +64,7 @@ fun AmigosView(
                     }
                     else -> {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(uiState.amigos) { user ->  // ✅ Lista del ViewModel
+                            items(uiState.amigos) { user ->
                                 Card(modifier = Modifier.fillMaxWidth()) {
                                     Row(
                                         modifier = Modifier

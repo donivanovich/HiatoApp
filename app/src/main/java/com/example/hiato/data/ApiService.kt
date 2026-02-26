@@ -35,4 +35,6 @@ interface HiatoApi {
     @POST("gastos_users")
     suspend fun createGastoUser(@Body gastoUser: GastoUser): GastoUser
 
+    @POST("signup")
+    suspend fun createUser(@Body user: User): User
 }

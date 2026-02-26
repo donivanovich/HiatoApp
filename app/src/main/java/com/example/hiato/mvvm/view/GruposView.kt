@@ -22,22 +22,18 @@ import com.example.hiato.mvvm.viewmodel.GruposViewModel
 fun GruposView(
     userId: Int,
     onGrupoClick: (Int) -> Unit,
-    viewModel: GruposViewModel = viewModel()  // ✅ ViewModel inyectado
+    viewModel: GruposViewModel = viewModel()
 ) {
     println("GruposView userId = $userId")
-    val uiState by viewModel.uiState.collectAsState()  // ✅ Estado reactivo único
-
-    // ✅ Solo estados UI del dialog (mínimos)
+    val uiState by viewModel.uiState.collectAsState()
     var showAddGrupoDialog by remember { mutableStateOf(false) }
     var newGrupoNombre by remember { mutableStateOf("") }
 
-    // ✅ Carga automática al entrar/cambiar userId
     LaunchedEffect(userId) {
         viewModel.loadGrupos(userId)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // ✅ FAB Nuevo Grupo
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -51,7 +47,6 @@ fun GruposView(
                 modifier = Modifier.align(Alignment.TopEnd),
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 interactionSource = if (uiState.isCreating) {
-                    // ✅ Deshabilitado: no responde a clicks ni ripple
                     remember { MutableInteractionSource() }
                 } else {
                     interactionSource
@@ -73,7 +68,7 @@ fun GruposView(
         ) {
             Column {
                 Text(
-                    "Mis Grupos (${uiState.grupos.size})",  // ✅ Del ViewModel
+                    "Mis Grupos (${uiState.grupos.size})",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -85,7 +80,7 @@ fun GruposView(
                             CircularProgressIndicator()
                         }
                     }
-                    uiState.error != null -> {  // ✅ Manejo de errores del VM
+                    uiState.error != null -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -113,7 +108,7 @@ fun GruposView(
                     }
                     else -> {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(uiState.grupos) { grupo ->  // ✅ Lista del ViewModel
+                            items(uiState.grupos) { grupo ->
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -143,7 +138,6 @@ fun GruposView(
         }
     }
 
-    // ✅ Dialog simplificado - lógica en ViewModel
     if (showAddGrupoDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -157,9 +151,9 @@ fun GruposView(
                     value = newGrupoNombre,
                     onValueChange = { newGrupoNombre = it },
                     label = { Text("Nombre del grupo") },
-                    isError = uiState.error?.contains("requerido") == true,  // ✅ Error del VM
+                    isError = uiState.error?.contains("requerido") == true,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isCreating,  // ✅ Deshabilitado mientras crea
+                    enabled = !uiState.isCreating,
                     supportingText = {
                         uiState.error?.takeIf { it.contains("requerido") }?.let {
                             Text(it, color = MaterialTheme.colorScheme.error)
@@ -174,7 +168,6 @@ fun GruposView(
                             userId = userId,
                             nombre = newGrupoNombre
                         ) {
-                            // ✅ Se cierra automáticamente al éxito (VM recarga lista)
                             showAddGrupoDialog = false
                             newGrupoNombre = ""
                         }

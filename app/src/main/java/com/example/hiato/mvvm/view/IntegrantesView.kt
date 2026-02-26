@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,30 +22,24 @@ import com.example.hiato.mvvm.viewmodel.IntegrantesViewModel
 @Composable
 fun IntegrantesView(
     gastoId: Int,
-    grupoId: Int,
     onBack: () -> Unit,
     viewModel: IntegrantesViewModel = viewModel()
 ) {
     println("IntegrantesView gastoId=$gastoId")
     val uiState by viewModel.uiState.collectAsState()
-
-    // ✅ Estados del dialog (locales como en GastosView)
     var showAddIntegranteDialog by remember { mutableStateOf(false) }
     var newUserId by remember { mutableStateOf("") }
 
-    // Carga automática
     LaunchedEffect(gastoId) {
         viewModel.loadIntegrantes(gastoId)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header con FABs
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 40.dp, start = 16.dp, end = 16.dp)
         ) {
-            // ← Volver
             FloatingActionButton(
                 onClick = onBack,
                 modifier = Modifier.align(Alignment.TopStart),
@@ -58,7 +51,6 @@ fun IntegrantesView(
                 )
             }
 
-            // + Añadir Integrante (deshabilitado mientras añade)
             FloatingActionButton(
                 onClick = { if (!uiState.isAdding) showAddIntegranteDialog = true },
                 modifier = Modifier.align(Alignment.TopEnd),
@@ -84,7 +76,7 @@ fun IntegrantesView(
             modifier = Modifier
                 .fillMaxSize()
                 .weight(1f)
-                .padding(horizontal = 16.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
         ) {
             Text(
                 "Integrantes del Gasto $gastoId (${uiState.integrantes.size})",
@@ -191,7 +183,6 @@ fun IntegrantesView(
         }
     }
 
-// ✅ Dialog SIMPLIFICADO (solo ID)
     if (showAddIntegranteDialog) {
         AlertDialog(
             onDismissRequest = {

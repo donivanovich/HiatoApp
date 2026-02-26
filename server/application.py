@@ -14,7 +14,6 @@ db = client.hiato
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'super-secret')
 jwt = JWTManager(app)
 
-# 🛠️ FUNCIÓN MÁGICA: Elimina _id de TODOS los docs
 def remove_id_fields(docs):
     result = []
     for doc in docs:
@@ -30,10 +29,54 @@ def login():
         return jsonify({'token': create_access_token(identity=user['id'])})
     return jsonify({'msg': 'Error login'}), 401
 
+@app.route('/signup', methods=['POST'])
+def create_user():
+    data = request.get_json()
+    print("🔍 SIGNUP DATA RECIBIDA:", data)
+    
+    if not all(key in data for key in ['email', 'password', 'nombre']):
+        return jsonify({'msg': 'Faltan campos obligatorios: email, password, nombre'}), 400
+    
+    if not isinstance(data['email'], str) or '@' not in data['email'] or len(data['email'].strip()) == 0:
+        return jsonify({'msg': 'email debe ser un string válido con @'}), 400
+    
+    if not isinstance(data['password'], str) or len(data['password']) < 4:
+        return jsonify({'msg': 'password debe ser un string de al menos 4 caracteres'}), 400
+    
+    if not isinstance(data['nombre'], str) or len(data['nombre'].strip()) == 0:
+        return jsonify({'msg': 'nombre debe ser un string no vacío'}), 400
+    
+    existing_user = db.users.find_one({'email': data['email'].lower().strip()})
+    if existing_user:
+        return jsonify({'msg': f'Usuario con email {data["email"]} ya existe'}), 409
+    
+    last_user = db.users.find_one(sort=[('id', -1)])
+    new_id = (last_user['id'] + 1) if last_user else 1
+    
+    nuevo_user = {
+        'id': new_id,
+        'email': data['email'].lower().strip(),
+        'nombre': data['nombre'].strip(),
+        'password': data['password']
+    }
+    
+    result = db.users.insert_one(nuevo_user)
+    
+    if result.acknowledged:
+        clean_user = {
+            'id': new_id,
+            'email': nuevo_user['email'],
+            'nombre': nuevo_user['nombre']
+        }
+        print("✅ USUARIO CREADO:", clean_user)
+        return jsonify(clean_user), 201
+    else:
+        return jsonify({'msg': 'Error al crear usuario'}), 500
+
 @app.route('/users', methods=['GET'])
 def get_users():
-    users = db.users.find()  # ✅ TODO incluido (password visible)
-    clean_users = remove_id_fields(list(users))  # Solo elimina _id
+    users = db.users.find()
+    clean_users = remove_id_fields(list(users))
     return jsonify(clean_users)
 
 @app.route('/grupos', methods=['GET'])
@@ -58,22 +101,19 @@ def get_gastos_users():
 def update_user(user_id):
     data = request.get_json()
     
-    # ✅ Validación básica (campos requeridos)
     if not data.get('email') or not data.get('password') or not data.get('nombre'):
         return jsonify({'msg': 'Faltan campos obligatorios: email, password, nombre'}), 400
     
-    # ✅ Actualiza SOLO los campos enviados (id NO se toca)
     update_data = {k: v for k, v in data.items() if k in ['email', 'password', 'nombre']}
     
     result = db.users.update_one(
-        {'id': user_id},  # ← Busca por id (NO _id)
-        {'$set': update_data}  # ← Actualiza parcial
+        {'id': user_id},
+        {'$set': update_data}
     )
     
     if result.modified_count == 0:
         return jsonify({'msg': 'Usuario no encontrado o sin cambios'}), 404
     
-    # ✅ Devuelve usuario actualizado (sin _id)
     updated_user = db.users.find_one({'id': user_id})
     clean_user = {k: v for k, v in updated_user.items() if k != '_id'}
     return jsonify(clean_user), 200
@@ -82,7 +122,6 @@ def update_user(user_id):
 def create_gasto():
     data = request.get_json()
     
-    # ✅ Validación básica (campos requeridos)
     if not all(key in data for key in ['grupoId', 'nombre', 'precio']):
         return jsonify({'msg': 'Faltan campos obligatorios: grupoId, nombre, precio'}), 400
     
@@ -95,11 +134,9 @@ def create_gasto():
     if not isinstance(data['precio'], (int, float)) or data['precio'] <= 0:
         return jsonify({'msg': 'precio debe ser un número positivo'}), 400
     
-    # ✅ Genera nuevo ID autoincremental
     last_gasto = db.gastos.find_one(sort=[('id', -1)])
     new_id = (last_gasto['id'] + 1) if last_gasto else 1
     
-    # ✅ Crea el gasto
     nuevo_gasto = {
         'id': new_id,
         'grupoId': data['grupoId'],
@@ -110,9 +147,8 @@ def create_gasto():
     result = db.gastos.insert_one(nuevo_gasto)
     
     if result.acknowledged:
-        # ✅ Limpia _id y devuelve el gasto creado
         clean_gasto = {k: v for k, v in nuevo_gasto.items() if k != '_id'}
-        return jsonify(clean_gasto), 201  # 201 = Created
+        return jsonify(clean_gasto), 201
     else:
         return jsonify({'msg': 'Error al crear gasto'}), 500
 
@@ -121,7 +157,6 @@ def create_grupo():
     data = request.get_json()
     print("🔍 DATA RECIBIDA:", data)
     
-    # ✅ Validación básica (campos requeridos)
     if not all(key in data for key in ['nombre', 'user_id']):
         return jsonify({'msg': 'Faltan campos obligatorios: nombre, user_id'}), 400
     
@@ -131,28 +166,24 @@ def create_grupo():
     if not isinstance(data['nombre'], str) or len(data['nombre'].strip()) == 0:
         return jsonify({'msg': 'nombre debe ser un string no vacío'}), 400
     
-    # ✅ Verifica que el user existe
     user_exists = db.users.find_one({'id': data['user_id']})
     if not user_exists:
         return jsonify({'msg': 'Usuario no encontrado'}), 404
     
-    # ✅ Genera nuevo ID autoincremental
     last_grupo = db.grupos.find_one(sort=[('id', -1)])
     new_id = (last_grupo['id'] + 1) if last_grupo else 1
     
-    # ✅ Crea el grupo
     nuevo_grupo = {
         'id': new_id,
         'nombre': data['nombre'].strip(),
-        'user_id': data['user_id']  # ✅ Corregido: data['user_id']
+        'user_id': data['user_id']
     }
     
     result = db.grupos.insert_one(nuevo_grupo)
     
     if result.acknowledged:
-        # ✅ Limpia _id y devuelve el grupo creado
         clean_grupo = {k: v for k, v in nuevo_grupo.items() if k != '_id'}
-        return jsonify(clean_grupo), 201  # 201 = Created
+        return jsonify(clean_grupo), 201
     else:
         return jsonify({'msg': 'Error al crear grupo'}), 500
 
@@ -161,30 +192,25 @@ def create_gasto_user():
     data = request.get_json()
     print("🔍 GASTOS_USERS DATA:", data)
     
-    # ✅ Solo snake_case
     gasto_id = data.get('gasto_id')
     user_id = data.get('user_id')
     
     print("🔍 PARSEADO gasto_id={}, user_id={}".format(gasto_id, user_id))
     
-    # ✅ VALIDACIONES OBLIGATORIAS
     if not gasto_id or not isinstance(gasto_id, int):
         return jsonify({'error': 'gasto_id requerido (entero)'}), 400
     
     if not user_id or not isinstance(user_id, int):
         return jsonify({'error': 'user_id requerido (entero)'}), 400
     
-    # ✅ VERIFICAR QUE EL USUARIO EXISTA
     user_exists = db.users.find_one({'id': user_id})
     if not user_exists:
         return jsonify({'error': f'Usuario con ID {user_id} no existe'}), 404
     
-    # ✅ VERIFICAR QUE EL GASTO EXISTA
     gasto_exists = db.gastos.find_one({'id': gasto_id})
     if not gasto_exists:
         return jsonify({'error': f'Gasto con ID {gasto_id} no existe'}), 404
     
-    # 🚫 EVITAR DUPLICADOS (snake_case completo)
     duplicado = db.gastos_users.find_one({
         'gasto_id': gasto_id,
         'user_id': user_id
@@ -194,11 +220,9 @@ def create_gasto_user():
             'error': f'Usuario {user_id} ya está asignado a este gasto {gasto_id}'
         }), 409
     
-    # ✅ Nuevo ID secuencial
     last_id = db.gastos_users.find_one(sort=[('id', -1)])
     new_id = (last_id['id'] + 1) if last_id else 1
     
-    # ✅ Todo snake_case en DB
     nuevo_gasto_user = {
         'id': new_id,
         'gasto_id': gasto_id,
@@ -207,7 +231,6 @@ def create_gasto_user():
     
     db.gastos_users.insert_one(nuevo_gasto_user)
     
-    # ✅ Response snake_case para Android
     response = {
         'id': new_id,
         'gasto_id': gasto_id,
@@ -216,7 +239,6 @@ def create_gasto_user():
     
     print("✅ GASTO_USER CREADO:", response)
     return jsonify(response), 201
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)

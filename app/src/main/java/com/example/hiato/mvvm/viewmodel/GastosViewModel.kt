@@ -56,7 +56,6 @@ class GastosViewModel(
                 _uiState.value = _uiState.value.copy(isCreating = true, error = null)
                 repository.addGasto(grupoId, nombre, precio)
 
-                // Recarga automática
                 loadGastos(grupoId)
                 onSuccess()
             } catch (e: Exception) {

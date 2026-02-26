@@ -21,32 +21,26 @@ import com.example.hiato.mvvm.viewmodel.GastosViewModel
 @Composable
 fun GastosView(
     grupoId: Int,
-    userId: Int,  // Mantenido por compatibilidad
     onBack: () -> Unit,
     onOpenIntegrantes: (gastoId: Int, grupoId: Int) -> Unit,
-    viewModel: GastosViewModel = viewModel()  // ✅ ViewModel
+    viewModel: GastosViewModel = viewModel()
 ) {
     println("GastosView grupoId=$grupoId")
     val uiState by viewModel.uiState.collectAsState()
-
-    // ✅ Solo estados UI del dialog
     var showAddGastoDialog by remember { mutableStateOf(false) }
     var newGastoNombre by remember { mutableStateOf("") }
     var newGastoPrecio by remember { mutableStateOf("") }
 
-    // ✅ Carga automática
     LaunchedEffect(grupoId) {
         viewModel.loadGastos(grupoId)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header con FABs
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 40.dp, start = 16.dp, end = 16.dp)
         ) {
-            // ← Volver (siempre habilitado)
             FloatingActionButton(
                 onClick = onBack,
                 modifier = Modifier.align(Alignment.TopStart),
@@ -58,7 +52,6 @@ fun GastosView(
                 )
             }
 
-            // + Nuevo Gasto (deshabilitado mientras crea)
             FloatingActionButton(
                 onClick = { if (!uiState.isCreating) showAddGastoDialog = true },
                 modifier = Modifier.align(Alignment.TopEnd),
@@ -84,10 +77,10 @@ fun GastosView(
             modifier = Modifier
                 .fillMaxSize()
                 .weight(1f)
-                .padding(horizontal = 16.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
         ) {
             Text(
-                "Gastos del Grupo $grupoId (${uiState.gastos.size})",  // ✅ Del VM
+                "Gastos del Grupo $grupoId (${uiState.gastos.size})",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -128,7 +121,7 @@ fun GastosView(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(uiState.gastos) { gasto ->  // ✅ Lista del VM
+                        items(uiState.gastos) { gasto ->
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -157,7 +150,6 @@ fun GastosView(
         }
     }
 
-    // ✅ Dialog simplificado
     if (showAddGastoDialog) {
         AlertDialog(
             onDismissRequest = {

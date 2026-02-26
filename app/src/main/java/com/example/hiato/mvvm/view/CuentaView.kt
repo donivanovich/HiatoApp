@@ -13,78 +13,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
-import com.example.hiato.data.HiatoRepository
-import com.example.hiato.mvvm.model.User
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hiato.mvvm.viewmodel.CuentaViewModel
 
 @Composable
 fun CuentaView(
-    userId: Int
+    userId: Int,
+    viewModel: CuentaViewModel = viewModel()
 ) {
-    var currentUser by remember { mutableStateOf<User?>(null) }
-    var numGrupos by remember { mutableStateOf(0) }
-    var isLoading by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
-
-    // Estados para edición
+    val uiState by viewModel.uiState.collectAsState()
     var showEditDialog by remember { mutableStateOf(false) }
     var editNombre by remember { mutableStateOf("") }
     var editEmail by remember { mutableStateOf("") }
     var editPassword by remember { mutableStateOf("") }
-    var isUpdating by remember { mutableStateOf(false) }
 
     LaunchedEffect(userId) {
-        scope.launch {
-            try {
-                val repo = HiatoRepository()
-                val allUsers = repo.getUsers()
-                val allGrupos = repo.getGrupos()
-
-                currentUser = allUsers.find { it.id == userId }
-                numGrupos = allGrupos.count { it.userId == userId }
-
-                println("CuentaView userId=$userId: ${currentUser?.nombre} tiene $numGrupos grupos")
-            } catch (e: Exception) {
-                println("Error cargando cuenta: ${e.message}")
-            } finally {
-                isLoading = false
-            }
-        }
+        viewModel.loadCuenta(userId)
     }
 
-    // Función para actualizar usuario
-    fun onUpdateUser() {
-        if (currentUser == null || editNombre.isBlank() || editEmail.isBlank() || editPassword.isBlank()) {
-            println("Usuario nulo o campos vacíos")
-            return
-        }
-        scope.launch {
-            try {
-                isUpdating = true
-                val repo = HiatoRepository()
-                val updatedUser = User(
-                    id = currentUser!!.id,
-                    nombre = editNombre,
-                    email = editEmail,
-                    password = editPassword
-                )
-                val result = repo.updateUser(currentUser!!.id!!, updatedUser)
-                currentUser = result
-                println("Usuario actualizado: ${result.nombre}")
-            } catch (e: Exception) {
-                println("Error actualizando: ${e.message}")
-            } finally {
-                isUpdating = false
-                showEditDialog = false
-            }
+    LaunchedEffect(uiState.currentUser) {
+        uiState.currentUser?.let {
+            editNombre = it.nombre ?: ""
+            editEmail = it.email ?: ""
+            editPassword = it.password ?: ""
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().weight(1f).padding(16.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(modifier = Modifier.height(64.dp))
 
@@ -103,22 +68,40 @@ fun CuentaView(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                if (isLoading) {
-                    CircularProgressIndicator()
-                } else if (currentUser != null) {
-                    Text(
-                        currentUser!!.nombre ?: "Sin nombre",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        currentUser!!.email ?: "Sin email",
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Text("Usuario no encontrado", fontSize = 18.sp)
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator()
+                    }
+                    uiState.error != null -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                uiState.error!!,
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.clearError() }) {
+                                Text("Reintentar")
+                            }
+                        }
+                    }
+                    uiState.currentUser != null -> {
+                        Text(
+                            uiState.currentUser!!.nombre ?: "Sin nombre",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            uiState.currentUser!!.email ?: "Sin email",
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    else -> {
+                        Text("Usuario no encontrado", fontSize = 18.sp)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -126,26 +109,40 @@ fun CuentaView(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.AccountCircle, null, modifier = Modifier.padding(end = 12.dp))
-                            Text("ID: $userId", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                null,
+                                modifier = Modifier.padding(end = 12.dp)
+                            )
+                            Text(
+                                "ID: $userId",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Group, null, modifier = Modifier.padding(end = 12.dp))
-                            Text("Total de grupos: $numGrupos", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            Icon(
+                                Icons.Default.Group,
+                                null,
+                                modifier = Modifier.padding(end = 12.dp)
+                            )
+                            Text(
+                                "Total de grupos: ${uiState.numGrupos}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+
                 Button(
                     onClick = {
-                        editNombre = currentUser!!.nombre ?: ""
-                        editEmail = currentUser!!.email ?: ""
-                        editPassword = currentUser!!.password ?: ""
-                        showEditDialog = true
+                        if (uiState.currentUser != null) showEditDialog = true
                     },
-                    enabled = currentUser != null,  // Deshabilita si no hay usuario
+                    enabled = uiState.currentUser != null && !uiState.isUpdating,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null)
@@ -156,43 +153,72 @@ fun CuentaView(
         }
     }
 
-    // Diálogo de edición
     if (showEditDialog) {
         AlertDialog(
-            onDismissRequest = { showEditDialog = false },
+            onDismissRequest = {
+                showEditDialog = false
+                viewModel.clearError()
+            },
             title = { Text("Editar Usuario") },
             text = {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
                         value = editNombre,
                         onValueChange = { editNombre = it },
                         label = { Text("Nombre") },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                        singleLine = true
+                        isError = uiState.error?.contains("Nombre") == true,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isUpdating,
+                        supportingText = {
+                            uiState.error?.takeIf { it.contains("Nombre") }?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     )
                     OutlinedTextField(
                         value = editEmail,
                         onValueChange = { editEmail = it },
                         label = { Text("Email") },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                        singleLine = true
+                        isError = uiState.error?.contains("Email") == true,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isUpdating,
+                        supportingText = {
+                            uiState.error?.takeIf { it.contains("Email") }?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     )
                     OutlinedTextField(
                         value = editPassword,
                         onValueChange = { editPassword = it },
                         label = { Text("Contraseña") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        isError = uiState.error?.contains("Contraseña") == true,
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation()  // ← Oculta password
+                        enabled = !uiState.isUpdating,
+                        supportingText = {
+                            uiState.error?.takeIf { it.contains("Contraseña") }?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     )
                 }
             },
             confirmButton = {
                 Button(
-                    onClick = { onUpdateUser() },
-                    enabled = !isUpdating
+                    onClick = {
+                        viewModel.updateUser(
+                            nombre = editNombre,
+                            email = editEmail,
+                            password = editPassword
+                        ) {
+                            showEditDialog = false
+                        }
+                    },
+                    enabled = !uiState.isUpdating && editNombre.isNotBlank() &&
+                            editEmail.isNotBlank() && editPassword.isNotBlank()
                 ) {
-                    if (isUpdating) {
+                    if (uiState.isUpdating) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp))
                     } else {
                         Text("Guardar")
@@ -200,7 +226,12 @@ fun CuentaView(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showEditDialog = false }) {
+                TextButton(
+                    onClick = {
+                        showEditDialog = false
+                        viewModel.clearError()
+                    }
+                ) {
                     Text("Cancelar")
                 }
             }

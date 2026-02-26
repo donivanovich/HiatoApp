@@ -60,7 +60,6 @@ class GruposViewModel(
                 )
                 repository.addGrupo(userId, nombre)
 
-                // Recarga automática la lista
                 loadGrupos(userId)
                 onSuccess()
                 println("Grupo creado: $nombre")

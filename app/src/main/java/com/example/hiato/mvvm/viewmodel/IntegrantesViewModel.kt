@@ -3,7 +3,6 @@ package com.example.hiato.mvvm.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hiato.data.HiatoRepository
-import com.example.hiato.mvvm.model.GastoUser
 import com.example.hiato.mvvm.model.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,11 +36,9 @@ class IntegrantesViewModel(
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-                // Cargar gastos_users y users para hacer join
                 val gastosUsers = repository.getGastosUsers()
                 val todosUsers = repository.getUsers()
 
-                // Filtrar los users que participan en este gasto específico
                 val gastosUsersDelGasto = gastosUsers.filter { it.gastoId == gastoId }
                 val integrantes = gastosUsersDelGasto.mapNotNull { gastoUser ->
                     todosUsers.find { it.id == gastoUser.userId }?.let { user ->
@@ -71,7 +68,6 @@ class IntegrantesViewModel(
 
                 repository.addGastoUser(gastoId = gastoId, userId = userId)
 
-                // Recarga automática
                 loadIntegrantes(gastoId)
                 onSuccess()
             } catch (e: Exception) {

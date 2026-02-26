@@ -16,7 +16,7 @@ data class AmigosUiState(
 )
 
 class AmigosViewModel(
-    private val repository: HiatoRepository = HiatoRepository()  // Sin Hilt por ahora [cite:12]
+    private val repository: HiatoRepository = HiatoRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AmigosUiState(isLoading = true))
