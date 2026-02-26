@@ -23,7 +23,8 @@ import kotlinx.coroutines.launch
 fun GastosView(
     grupoId: Int,
     userId: Int,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenIntegrantes: (gastoId: Int, grupoId: Int) -> Unit
 ) {
     println("GastosView grupoId=$grupoId, userId=$userId")
     var gastos by remember { mutableStateOf<List<Gasto>>(emptyList()) }
@@ -118,7 +119,7 @@ fun GastosView(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        // TODO: Acción al pulsar gasto
+                                        gasto.id?.let { onOpenIntegrantes(it, grupoId) }
                                     }
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {

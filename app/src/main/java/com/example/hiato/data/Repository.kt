@@ -1,6 +1,7 @@
 package com.example.hiato.data
 
 import com.example.hiato.mvvm.model.Gasto
+import com.example.hiato.mvvm.model.GastoUser
 import com.example.hiato.mvvm.model.Grupo
 import com.example.hiato.mvvm.model.User
 import retrofit2.Retrofit
@@ -50,5 +51,7 @@ class HiatoRepository {
         )
         return api.createGrupo(grupo)
     }
+
+    suspend fun addGastoUser(gastoUser: GastoUser): GastoUser = api.createGastoUser(gastoUser)
 }
 

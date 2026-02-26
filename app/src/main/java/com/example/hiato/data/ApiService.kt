@@ -31,4 +31,8 @@ interface HiatoApi {
 
     @POST("grupos")
     suspend fun createGrupo(@Body grupo: Grupo): Grupo
+
+    @POST("gastos_users")
+    suspend fun createGastoUser(@Body gastoUser: GastoUser): GastoUser
+
 }
