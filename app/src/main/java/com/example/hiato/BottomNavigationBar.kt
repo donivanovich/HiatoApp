@@ -5,6 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -18,9 +19,9 @@ import androidx.navigation.NavHostController
 @Composable
 fun BottomNavigationBar(
     selectedTab: Int,
-    onTabSelected: (Int) -> Unit,
     userId: Int,
-    navController: NavHostController // Mantenido por compatibilidad, NO se usa para navegar
+    navController: NavHostController,
+    onTabSelected: (Int) -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -37,15 +38,15 @@ fun BottomNavigationBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val tabs = listOf(
-                TabItem("Grupos", Icons.Default.Group, 0),
-                TabItem("Amigos", Icons.Default.People, 1),
+                TabItem("Grupos", Icons.Default.People, 0),
+                TabItem("Amigos", Icons.Default.MarkUnreadChatAlt, 1),
                 TabItem("Cuenta", Icons.Default.AccountCircle, 2)
             )
 
             tabs.forEach { tab ->
                 TextButton(
                     onClick = {
-                        onTabSelected(tab.index) // ✅ SOLO navegación LOCAL
+                        onTabSelected(tab.index)
                     },
                     modifier = Modifier.weight(1f)
                 ) {

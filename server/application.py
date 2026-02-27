@@ -32,7 +32,6 @@ def login():
 @app.route('/signup', methods=['POST'])
 def create_user():
     data = request.get_json()
-    print("🔍 SIGNUP DATA RECIBIDA:", data)
     
     if not all(key in data for key in ['email', 'password', 'nombre']):
         return jsonify({'msg': 'Faltan campos obligatorios: email, password, nombre'}), 400
@@ -68,7 +67,6 @@ def create_user():
             'email': nuevo_user['email'],
             'nombre': nuevo_user['nombre']
         }
-        print("✅ USUARIO CREADO:", clean_user)
         return jsonify(clean_user), 201
     else:
         return jsonify({'msg': 'Error al crear usuario'}), 500
@@ -155,7 +153,6 @@ def create_gasto():
 @app.route('/grupos', methods=['POST'])
 def create_grupo():
     data = request.get_json()
-    print("🔍 DATA RECIBIDA:", data)
     
     if not all(key in data for key in ['nombre', 'user_id']):
         return jsonify({'msg': 'Faltan campos obligatorios: nombre, user_id'}), 400
@@ -190,12 +187,9 @@ def create_grupo():
 @app.route('/gastos_users', methods=['POST'])
 def create_gasto_user():
     data = request.get_json()
-    print("🔍 GASTOS_USERS DATA:", data)
     
     gasto_id = data.get('gasto_id')
     user_id = data.get('user_id')
-    
-    print("🔍 PARSEADO gasto_id={}, user_id={}".format(gasto_id, user_id))
     
     if not gasto_id or not isinstance(gasto_id, int):
         return jsonify({'error': 'gasto_id requerido (entero)'}), 400
@@ -237,7 +231,6 @@ def create_gasto_user():
         'user_id': user_id
     }
     
-    print("✅ GASTO_USER CREADO:", response)
     return jsonify(response), 201
 
 if __name__ == '__main__':

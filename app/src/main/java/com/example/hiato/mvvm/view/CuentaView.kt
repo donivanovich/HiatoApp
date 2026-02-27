@@ -6,6 +6,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,15 +19,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import com.example.hiato.mvvm.viewmodel.CuentaViewModel
+import androidx.compose.foundation.layout.Arrangement
 
 @Composable
 fun CuentaView(
     userId: Int,
+    navController: NavHostController,
     viewModel: CuentaViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showEditDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     var editNombre by remember { mutableStateOf("") }
     var editEmail by remember { mutableStateOf("") }
     var editPassword by remember { mutableStateOf("") }
@@ -56,14 +62,38 @@ fun CuentaView(
                 Surface(
                     shape = CircleShape,
                     tonalElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.size(96.dp)
                 ) {
-                    Icon(
-                        Icons.Default.AccountCircle,
-                        null,
-                        modifier = Modifier.size(96.dp).clip(CircleShape),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when {
+                            uiState.isLoading || uiState.currentUser == null -> {
+                                Icon(
+                                    Icons.Default.AccountCircle,
+                                    null,
+                                    modifier = Modifier.size(96.dp).clip(CircleShape),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            else -> {
+                                val nombre = uiState.currentUser!!.nombre ?: ""
+                                val initial = if (nombre.isNotEmpty()) {
+                                    nombre.trim().uppercase().first().toString()
+                                } else {
+                                    "?"
+                                }
+                                Text(
+                                    text = initial,
+                                    fontSize = 36.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -110,7 +140,7 @@ fun CuentaView(
                     Column(modifier = Modifier.padding(24.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.AccountCircle,
+                                Icons.Default.Info,
                                 null,
                                 modifier = Modifier.padding(end = 12.dp)
                             )
@@ -149,6 +179,21 @@ fun CuentaView(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Editar Usuario")
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = { showLogoutDialog = true },
+                    enabled = uiState.currentUser != null,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Logout, contentDescription = "Desloguear")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Desloguear")
+                }
             }
         }
     }
@@ -159,7 +204,7 @@ fun CuentaView(
                 showEditDialog = false
                 viewModel.clearError()
             },
-            title = { Text("Editar Usuario") },
+            title = { Text("Editar Cuenta") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
@@ -232,6 +277,33 @@ fun CuentaView(
                         viewModel.clearError()
                     }
                 ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Confirmar") },
+            text = { Text("¿Estás seguro de cerrar sesión?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        navController.navigate("login") {
+                            popUpTo(navController.graph.startDestinationId) {
+                                inclusive = true
+                            }
+                        }
+                        showLogoutDialog = false
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
                     Text("Cancelar")
                 }
             }

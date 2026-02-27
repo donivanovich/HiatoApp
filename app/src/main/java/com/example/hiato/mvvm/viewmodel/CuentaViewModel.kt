@@ -43,8 +43,6 @@ class CuentaViewModel(
                     numGrupos = numGrupos,
                     isLoading = false
                 )
-
-                println("CuentaViewModel userId=$userId: ${user?.nombre} tiene $numGrupos grupos")
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -77,7 +75,6 @@ class CuentaViewModel(
 
                 val result = repository.updateUser(userId, updatedUser)
 
-                // Recarga datos actualizados
                 loadCuenta(userId)
                 onSuccess()
             } catch (e: Exception) {

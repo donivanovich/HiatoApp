@@ -50,8 +50,6 @@ class IntegrantesViewModel(
                     integrantes = integrantes,
                     isLoading = false
                 )
-
-                println("IntegrantesViewModel: ${integrantes.size} integrantes para gastoId=$gastoId")
             } catch (e: Exception) {
                 _uiState.value = IntegrantesUiState(
                     isLoading = false,
@@ -61,10 +59,21 @@ class IntegrantesViewModel(
         }
     }
 
-    fun addIntegrante(gastoId: Int, userId: Int, onSuccess: () -> Unit = {}) {
+    fun addIntegrante(gastoId: Int, userEmail: String, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(isAdding = true, error = null)
+
+                val todosUsers = repository.getUsers()
+                val user = todosUsers.find { it.email == userEmail }
+
+                val userId = user?.id ?: run {
+                    _uiState.value = _uiState.value.copy(
+                        isAdding = false,
+                        error = "Usuario con correo '$userEmail' no encontrado"
+                    )
+                    return@launch
+                }
 
                 repository.addGastoUser(gastoId = gastoId, userId = userId)
 

@@ -70,7 +70,7 @@ fun Login(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Login", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            Text("Iniciar Sesión", fontSize = 32.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(32.dp))
 
             OutlinedTextField(
@@ -147,7 +147,7 @@ fun Login(
                 onClick = { showSignupDialog = true },
                 enabled = !isLoading
             ) {
-                Text("¿Nuevo usuario? Crear cuenta")
+                Text("¿Eres nuevo? Crea tu cuenta")
             }
         }
     }
@@ -160,7 +160,7 @@ fun Login(
                 signupNombre = ""
                 signupPassword = ""
             },
-            title = { Text("Nueva Cuenta") },
+            title = { Text("Crear Cuenta") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -171,7 +171,8 @@ fun Login(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !signupIsLoading,
                         supportingText = {
-                            if (!signupEmail.contains("@")) {
+                            if (!signupEmail.contains("@") || !signupEmail.contains(".") ||
+                                !signupEmail.substringAfterLast("@").contains(".")) {
                                 Text("Email inválido", color = MaterialTheme.colorScheme.error)
                             }
                         }
@@ -186,7 +187,7 @@ fun Login(
                         enabled = !signupIsLoading,
                         supportingText = {
                             if (signupNombre.trim().isBlank()) {
-                                Text("Nombre requerido", color = MaterialTheme.colorScheme.error)
+                                Text("Nombre incompleto", color = MaterialTheme.colorScheme.error)
                             }
                         }
                     )
@@ -219,7 +220,7 @@ fun Login(
                                     signupNombre.trim(),
                                     signupPassword
                                 )
-                                snackbarHostState.showSnackbar("¡Creado ID: ${newUser.id}!")
+                                snackbarHostState.showSnackbar("Usuario creado correctamente")
                                 showSignupDialog = false
                             } catch (e: Exception) {
                                 snackbarHostState.showSnackbar("Error: ${e.message}")

@@ -32,14 +32,16 @@ class AmigosViewModel(
                     amigos = filteredAmigos,
                     isLoading = false
                 )
-                println("AmigosViewModel: ${filteredAmigos.size} amigos cargados para userId=$userId")
             } catch (e: Exception) {
                 _uiState.value = AmigosUiState(
                     isLoading = false,
                     error = e.message ?: "Error desconocido"
                 )
-                println("Error cargando amigos: ${e.message}")
             }
         }
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
     }
 }

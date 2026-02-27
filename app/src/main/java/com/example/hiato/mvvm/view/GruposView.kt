@@ -24,7 +24,6 @@ fun GruposView(
     onGrupoClick: (Int) -> Unit,
     viewModel: GruposViewModel = viewModel()
 ) {
-    println("GruposView userId = $userId")
     val uiState by viewModel.uiState.collectAsState()
     var showAddGrupoDialog by remember { mutableStateOf(false) }
     var newGrupoNombre by remember { mutableStateOf("") }
@@ -145,7 +144,7 @@ fun GruposView(
                 newGrupoNombre = ""
                 viewModel.clearError()
             },
-            title = { Text("Nuevo Grupo") },
+            title = { Text("Crear un Grupo") },
             text = {
                 OutlinedTextField(
                     value = newGrupoNombre,

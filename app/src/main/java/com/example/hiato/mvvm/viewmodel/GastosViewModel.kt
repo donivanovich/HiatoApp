@@ -33,7 +33,6 @@ class GastosViewModel(
                     gastos = gastosGrupo,
                     isLoading = false
                 )
-                println("GastosViewModel: ${gastosGrupo.size} gastos para grupoId=$grupoId")
             } catch (e: Exception) {
                 _uiState.value = GastosUiState(
                     isLoading = false,

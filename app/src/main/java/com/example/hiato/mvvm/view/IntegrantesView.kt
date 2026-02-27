@@ -22,13 +22,13 @@ import com.example.hiato.mvvm.viewmodel.IntegrantesViewModel
 @Composable
 fun IntegrantesView(
     gastoId: Int,
+    gastoPrecio: Double,
     onBack: () -> Unit,
     viewModel: IntegrantesViewModel = viewModel()
 ) {
-    println("IntegrantesView gastoId=$gastoId")
     val uiState by viewModel.uiState.collectAsState()
     var showAddIntegranteDialog by remember { mutableStateOf(false) }
-    var newUserId by remember { mutableStateOf("") }
+    var newUserIdentifier by remember { mutableStateOf("") }
 
     LaunchedEffect(gastoId) {
         viewModel.loadIntegrantes(gastoId)
@@ -79,7 +79,7 @@ fun IntegrantesView(
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
         ) {
             Text(
-                "Integrantes del Gasto $gastoId (${uiState.integrantes.size})",
+                "Integrantes (${uiState.integrantes.size})",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -128,6 +128,9 @@ fun IntegrantesView(
                 }
 
                 else -> {
+                    val numIntegrantes = uiState.integrantes.size.coerceAtLeast(1)
+                    val cantidadPorIntegrante = gastoPrecio / numIntegrantes
+
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
@@ -162,7 +165,9 @@ fun IntegrantesView(
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(16.dp))
-                                    Column {
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
                                         Text(
                                             integrante.user.nombre ?: "Sin nombre",
                                             fontSize = 18.sp,
@@ -174,6 +179,12 @@ fun IntegrantesView(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
+                                    Text(
+                                        text = String.format("%.2f €", cantidadPorIntegrante),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                         }
@@ -187,17 +198,17 @@ fun IntegrantesView(
         AlertDialog(
             onDismissRequest = {
                 showAddIntegranteDialog = false
-                newUserId = ""
+                newUserIdentifier = ""
                 viewModel.clearError()
             },
-            title = { Text("Añadir Integrante") },
+            title = { Text("Añadir un Integrante") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
-                        value = newUserId,
-                        onValueChange = { newUserId = it },
-                        label = { Text("ID del usuario") },
-                        isError = uiState.error?.contains("ID") == true || newUserId.isBlank(),
+                        value = newUserIdentifier,
+                        onValueChange = { newUserIdentifier = it },
+                        label = { Text("Correo del usuario") },
+                        isError = uiState.error != null || newUserIdentifier.isBlank(),
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isAdding,
                         supportingText = {
@@ -205,6 +216,12 @@ fun IntegrantesView(
                                 Text(
                                     uiState.error!!,
                                     color = MaterialTheme.colorScheme.error
+                                )
+                            } else {
+                                Text(
+                                    "Por ejemplo: user@example.com",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
                                 )
                             }
                         }
@@ -214,18 +231,17 @@ fun IntegrantesView(
             confirmButton = {
                 Button(
                     onClick = {
-                        val userId = newUserId.toIntOrNull()
-                        if (userId != null && userId > 0) {
+                        if (newUserIdentifier.isNotBlank()) {
                             viewModel.addIntegrante(
                                 gastoId = gastoId,
-                                userId = userId
+                                userEmail = newUserIdentifier
                             ) {
                                 showAddIntegranteDialog = false
-                                newUserId = ""
+                                newUserIdentifier = ""
                             }
                         }
                     },
-                    enabled = !uiState.isAdding && newUserId.isNotBlank()
+                    enabled = !uiState.isAdding && newUserIdentifier.isNotBlank()
                 ) {
                     if (uiState.isAdding) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -238,7 +254,7 @@ fun IntegrantesView(
                 TextButton(
                     onClick = {
                         showAddIntegranteDialog = false
-                        newUserId = ""
+                        newUserIdentifier = ""
                         viewModel.clearError()
                     }
                 ) {

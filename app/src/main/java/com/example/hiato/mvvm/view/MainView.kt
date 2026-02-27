@@ -14,8 +14,8 @@ import com.example.hiato.mvvm.viewmodel.IntegrantesViewModel
 
 @Composable
 fun MainView(
-    navController: NavHostController,
-    userId: Int
+    userId: Int,
+    navController: NavHostController
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     var grupoSeleccionado by remember { mutableStateOf<Int?>(null) }
@@ -26,6 +26,7 @@ fun MainView(
     val gastosViewModel = remember(repo) { GastosViewModel(repo) }
     val integrantesViewModel = remember(repo) { IntegrantesViewModel(repo) }
     val cuentaViewModel = remember(repo) { CuentaViewModel(repo) }
+    var gastoPrecio by remember { mutableStateOf(0.0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
@@ -35,6 +36,7 @@ fun MainView(
                         gastoSeleccionado != null && grupoSeleccionado != null -> {
                             IntegrantesView(
                                 gastoId = gastoSeleccionado!!,
+                                gastoPrecio = gastoPrecio,
                                 onBack = { gastoSeleccionado = null },
                                 viewModel = integrantesViewModel
                             )
@@ -43,8 +45,9 @@ fun MainView(
                             GastosView(
                                 grupoId = grupoSeleccionado!!,
                                 onBack = { grupoSeleccionado = null },
-                                onOpenIntegrantes = { gastoId, grupoId ->
+                                onOpenIntegrantes = { gastoId, grupoId, precio ->
                                     gastoSeleccionado = gastoId
+                                    gastoPrecio = precio
                                 },
                                 viewModel = gastosViewModel
                             )
@@ -61,21 +64,21 @@ fun MainView(
                     }
                 }
                 1 -> AmigosView(userId, amigosViewModel)
-                2 -> CuentaView(userId, viewModel = cuentaViewModel)
+                2 -> CuentaView(userId, navController = navController, viewModel = cuentaViewModel)
             }
         }
 
         BottomNavigationBar(
             selectedTab = selectedTab,
+            userId = userId,
+            navController = navController,
             onTabSelected = { tabIndex ->
                 selectedTab = tabIndex
                 if (selectedTab != 0) {
                     grupoSeleccionado = null
                     gastoSeleccionado = null
                 }
-            },
-            userId = userId,
-            navController = navController
+            }
         )
     }
 }

@@ -33,13 +33,11 @@ class GruposViewModel(
                     grupos = misGrupos,
                     isLoading = false
                 )
-                println("GruposViewModel: ${misGrupos.size} grupos cargados para userId=$userId")
             } catch (e: Exception) {
                 _uiState.value = GruposUiState(
                     isLoading = false,
                     error = e.message ?: "Error cargando grupos"
                 )
-                println("Error cargando grupos: ${e.message}")
             }
         }
     }
@@ -62,13 +60,11 @@ class GruposViewModel(
 
                 loadGrupos(userId)
                 onSuccess()
-                println("Grupo creado: $nombre")
             } catch (e: Exception) {
                 _uiState.value = GruposUiState(
                     isCreating = false,
                     error = "Error creando grupo: ${e.message}"
                 )
-                println("Error creando grupo: ${e.message}")
             }
         }
     }

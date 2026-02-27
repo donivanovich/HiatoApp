@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,10 +22,9 @@ import com.example.hiato.mvvm.viewmodel.GastosViewModel
 fun GastosView(
     grupoId: Int,
     onBack: () -> Unit,
-    onOpenIntegrantes: (gastoId: Int, grupoId: Int) -> Unit,
+    onOpenIntegrantes: (gastoId: Int, grupoId: Int, precio: Double) -> Unit,
     viewModel: GastosViewModel = viewModel()
 ) {
-    println("GastosView grupoId=$grupoId")
     val uiState by viewModel.uiState.collectAsState()
     var showAddGastoDialog by remember { mutableStateOf(false) }
     var newGastoNombre by remember { mutableStateOf("") }
@@ -62,7 +61,7 @@ fun GastosView(
                 }
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = Icons.Default.AddShoppingCart,
                     contentDescription = "Añadir Gasto",
                     tint = if (uiState.isCreating) {
                         MaterialTheme.colorScheme.onSurface
@@ -80,7 +79,7 @@ fun GastosView(
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
         ) {
             Text(
-                "Gastos del Grupo $grupoId (${uiState.gastos.size})",
+                "Gastos (${uiState.gastos.size})",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -126,7 +125,7 @@ fun GastosView(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        gasto.id?.let { onOpenIntegrantes(it, grupoId) }
+                                        gasto.id?.let { onOpenIntegrantes(it, grupoId, gasto.precio) }
                                     }
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
@@ -158,7 +157,7 @@ fun GastosView(
                 newGastoPrecio = ""
                 viewModel.clearError()
             },
-            title = { Text("Nuevo Gasto") },
+            title = { Text("Añadir un Gasto") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(

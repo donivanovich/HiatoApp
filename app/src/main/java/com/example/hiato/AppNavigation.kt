@@ -7,7 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.hiato.mvvm.view.Login
-import com.example.hiato.mvvm.view.MainView  // ← SOLO ESTE IMPORT
+import com.example.hiato.mvvm.view.MainView
 
 @Composable
 fun AppNavigation() {
@@ -26,10 +26,9 @@ fun AppNavigation() {
             arguments = listOf(navArgument("userId") { type = NavType.IntType })
         ) { backStackEntry ->
             val userId = backStackEntry.arguments?.getInt("userId") ?: 1
-            MainView(navController, userId)
+            MainView(userId, navController = navController)
         }
 
-        // ✅ NUEVA RUTA para GastosView
         composable(
             "gastos/{grupoId}",
             arguments = listOf(
