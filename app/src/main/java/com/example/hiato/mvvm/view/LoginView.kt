@@ -25,7 +25,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +39,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.hiato.LoginViewRoute
+import com.example.hiato.MainViewRoute
 import com.example.hiato.data.HiatoRepository
 import kotlinx.coroutines.launch
 
@@ -118,8 +119,8 @@ fun Login(
                             }
 
                             if (user != null) {
-                                navController.navigate("main/${user.id}") {
-                                    popUpTo("login") { inclusive = true }
+                                navController.navigate(MainViewRoute(userId = user.id?.toInt() ?: 1)) {
+                                    popUpTo(LoginViewRoute) { inclusive = true }
                                 }
                             } else {
                                 snackbarHostState.showSnackbar("Email o contraseña incorrectos")

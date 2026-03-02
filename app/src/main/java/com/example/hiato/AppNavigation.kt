@@ -1,13 +1,19 @@
 package com.example.hiato
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import com.example.hiato.mvvm.view.Login
+import kotlinx.serialization.Serializable
 import com.example.hiato.mvvm.view.MainView
+
+@Serializable
+object LoginViewRoute
+
+@Serializable
+data class MainViewRoute(val userId: Int)
 
 @Composable
 fun AppNavigation() {
@@ -15,32 +21,15 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = "login"
+        startDestination = LoginViewRoute
     ) {
-        composable("login") {
+        composable<LoginViewRoute> {
             Login(navController)
         }
 
-        composable(
-            "main/{userId}",
-            arguments = listOf(navArgument("userId") { type = NavType.IntType })
-        ) { backStackEntry ->
-            val userId = backStackEntry.arguments?.getInt("userId") ?: 1
-            MainView(userId, navController = navController)
-        }
-
-        composable(
-            "gastos/{grupoId}",
-            arguments = listOf(
-                navArgument("grupoId") { type = NavType.IntType },
-                navArgument("userId") {
-                    type = NavType.IntType
-                    defaultValue = 1
-                }
-            )
-        ) { backStackEntry ->
-            val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
-            val userId = backStackEntry.arguments?.getInt("userId") ?: 1
+        composable<MainViewRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<MainViewRoute>()
+            MainView(userId = route.userId, navController = navController)
         }
     }
 }

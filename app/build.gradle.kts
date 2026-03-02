@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
 }
 
 android {
@@ -67,6 +68,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation(libs.androidx.compose.foundation)
+    implementation("androidx.navigation:navigation-compose:2.9.7")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

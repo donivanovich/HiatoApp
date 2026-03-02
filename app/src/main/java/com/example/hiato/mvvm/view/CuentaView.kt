@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.hiato.mvvm.viewmodel.CuentaViewModel
 import androidx.compose.foundation.layout.Arrangement
+import com.example.hiato.LoginViewRoute
 
 @Composable
 fun CuentaView(
@@ -190,9 +191,9 @@ fun CuentaView(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Logout, contentDescription = "Desloguear")
+                    Icon(Icons.Default.Logout, contentDescription = "Salir")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Desloguear")
+                    Text("Salir")
                 }
             }
         }
@@ -291,10 +292,9 @@ fun CuentaView(
             confirmButton = {
                 Button(
                     onClick = {
-                        navController.navigate("login") {
-                            popUpTo(navController.graph.startDestinationId) {
-                                inclusive = true
-                            }
+                        // SIMPLEMENTE VUELVE AL LOGIN sin limpiar nada
+                        navController.navigate(LoginViewRoute) {
+                            popUpTo(0) { inclusive = true }
                         }
                         showLogoutDialog = false
                     }
